@@ -5,8 +5,10 @@ import br.com.banking.core.enums.TransactionStatus;
 import br.com.banking.core.enums.TransactionType;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
+
 
 public class BankingCoreImpl implements IBankingCore{
     private final Map<UUID, Deque<Transaction>> accountMap;
@@ -43,7 +45,7 @@ public class BankingCoreImpl implements IBankingCore{
     @Override
     public Transaction transfer(UUID sourceAccountId, UUID targetAccountId, BigDecimal amount, LocalDateTime timestamp) {
         if(!accountMap.containsKey(sourceAccountId) || !accountMap.containsKey(targetAccountId)
-            || sourceAccountId.equals(targetAccountId) || amount.compareTo(BigDecimal.ZERO) <= 0) {
+                || sourceAccountId.equals(targetAccountId) || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Invalid transfer parameters");
         }
 
@@ -54,12 +56,14 @@ public class BankingCoreImpl implements IBankingCore{
 
     @Override
     public Transaction payWithCashback(UUID accountId, BigDecimal amount, LocalDateTime timestamp, long secondsUntilCashback) {
+        decrementBalanceAccount(accountId, amount, timestamp, null, TransactionType.PAYMENT_TRANSFER);
+        BigDecimal cashbackAmount = amount.multiply(BigDecimal.valueOf(0.02)).setScale(2, RoundingMode.DOWN);;
         final LocalDateTime scheduledDate = timestamp.plusSeconds(secondsUntilCashback);
-        final Transaction incrementBalanceAccount = new Transaction(UUID.randomUUID(), accountId, amount, null,
-                timestamp, scheduledDate, TransactionType.PAYMENT_TRANSFER, TransactionStatus.PENDING);
+        final Transaction pendingCashback = new Transaction(UUID.randomUUID(), accountId, cashbackAmount, null,
+                timestamp, scheduledDate, TransactionType.CASHBACK_DEPOSIT, TransactionStatus.PENDING);
 
-        cashbackHeap.offer(incrementBalanceAccount);
-        return incrementBalanceAccount;
+        cashbackHeap.offer(pendingCashback);
+        return pendingCashback;
     }
 
     @Override
@@ -98,7 +102,7 @@ public class BankingCoreImpl implements IBankingCore{
 
     @Override
     public List<Transaction> getStatement(UUID accountId) {
-        return accountMap.get(accountId).stream().toList();
+        return Optional.ofNullable(accountMap.get(accountId)).orElse(new ArrayDeque<>()).stream().toList();
     }
 
     @Override
@@ -110,9 +114,10 @@ public class BankingCoreImpl implements IBankingCore{
         }
 
         return transactions.stream()
-                .filter(t -> !t.transactionDate().isAfter(to) && !t.transactionDate().isBefore(from))
+                .filter(t -> type == null || t.transactionType() == type)
+                .filter(t -> from == null || !t.transactionDate().isBefore(from))
+                .filter(t -> to == null || !t.transactionDate().isAfter(to))
                 .toList();
-
     }
 
     private Transaction incrementBalanceAccount(UUID accountId, BigDecimal amount, LocalDateTime timestamp, LocalDateTime scheduledDate, TransactionType transactionType) {
@@ -149,3 +154,4 @@ public class BankingCoreImpl implements IBankingCore{
 
 
 }
+
