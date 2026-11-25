@@ -1,26 +1,18 @@
 package br.com.banking.core.service;
 
 import br.com.banking.core.domain.Transaction;
+import br.com.banking.core.domain.TransactionCommand;
 import br.com.banking.core.enums.TransactionStatus;
 import br.com.banking.core.enums.TransactionType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
-public interface IBankingCore {
+public interface IBankingCore{
 
-    Transaction createAccount(UUID accountId, LocalDateTime timestamp);
-
-    Transaction deposit(UUID accountId, BigDecimal amount, LocalDateTime timestamp);
-
-    Transaction withdraw(UUID accountId, BigDecimal amount, LocalDateTime timestamp);
-
-    Transaction transfer(UUID sourceAccountId, UUID targetAccountId, BigDecimal amount, LocalDateTime timestamp);
-
-    Transaction payWithCashback(UUID accountId, BigDecimal amount, LocalDateTime timestamp, long secondsUntilCashback);
+    <T extends TransactionCommand> List<Transaction> dispatch(T command);
 
     void processCashback(LocalDateTime currentTimestamp);
 
