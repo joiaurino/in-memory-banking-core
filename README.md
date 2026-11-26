@@ -38,22 +38,23 @@ src/main/java/br/com/banking/core/
 - **Java 25 (LTS)**
 - **Apache Maven 3.9+**
 
-### Running Tests & CLI
-
-git clone [https://github.com/joiaurino/in-memory-banking-core.git](https://github.com/joiaurino/in-memory-banking-core.git)
+### Clone the Repository
+```bash
+git clone https://github.com/joiaurino/in-memory-banking-core.git
 cd in-memory-banking-core
+```
 
-#### Run the JUnit 5 test suite
+### Run the JUnit 5 Test Suite
+```bash
 mvn test
+```
 
-#### Package executable JAR
+### Package Executable JAR
+```bash
 mvn package
+```
 
-#### Run the interactive CLI
+### Run the Interactive CLI
+```bash
 mvn compile exec:java -Dexec.mainClass="br.com.banking.core.BankingCoreApplication"
-
-## Roadmap (v3.0.0)
-- **Authentication & Session Security:** User login flow with session management and token-based authorization required to dispatch account operations.
-- **Concurrency & Thread-Safety:** `ConcurrentHashMap`, `PriorityBlockingQueue`, per-account ledger locking, and background cashback settlement via `ScheduledExecutorService`.
-- **Composable Query Filters:** Specification Pattern (`Predicate<Transaction>`) for multi-criteria statement searches.
-- **Idempotency Keys:** Duplicate command protection via client-supplied transaction IDs.
+```
