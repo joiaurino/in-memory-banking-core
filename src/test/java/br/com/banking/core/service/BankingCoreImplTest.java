@@ -188,6 +188,22 @@ class BankingCoreImplTest {
             assertThrows(IllegalArgumentException.class,
                     () -> bankingCore.dispatch(new CashbackPaymentCommand(accountA, new BigDecimal("100.00"), baseTime.plusSeconds(5), -1)));
         }
+
+        @Test
+        @DisplayName("Should reject cashback status lookup for unknown transaction or mismatched account")
+        void shouldRejectInvalidCashbackStatusLookup() {
+            bankingCore.dispatch(new CreateAccountCommand(accountB, baseTime));
+
+            List<Transaction> result = bankingCore.dispatch(
+                    new CashbackPaymentCommand(accountA, new BigDecimal("100.00"), baseTime.plusSeconds(5), 10)
+            );
+            UUID cashbackId = result.get(1).transactionId();
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> bankingCore.getCashbackStatus(accountA, UUID.randomUUID()));
+            assertThrows(IllegalArgumentException.class,
+                    () -> bankingCore.getCashbackStatus(accountB, cashbackId));
+        }
     }
 
     @Nested

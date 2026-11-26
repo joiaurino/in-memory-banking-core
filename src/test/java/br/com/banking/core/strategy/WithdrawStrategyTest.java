@@ -17,19 +17,18 @@ import static org.junit.jupiter.api.Assertions.*;
 class WithdrawStrategyTest {
 
     private WithdrawStrategy strategy;
-    private Map<UUID, Deque<Transaction>> accountMap;
     private UUID accountId;
     private LocalDateTime now;
 
     @BeforeEach
     void setUp() {
-        strategy = new WithdrawStrategy();
-        accountMap = new HashMap<>();
+        Map<UUID, Deque<Transaction>> accountMap = new HashMap<>();
+        strategy = new WithdrawStrategy(accountMap);
         accountId = UUID.randomUUID();
         now = LocalDateTime.of(2026, 11, 25, 12, 0, 0);
 
-        new CreateAccountStrategy().execute(new CreateAccountCommand(accountId, now), accountMap);
-        new DepositStrategy().execute(new DepositCommand(accountId, new BigDecimal("300.00"), now.plusSeconds(1)), accountMap);
+        new CreateAccountStrategy(accountMap).execute(new CreateAccountCommand(accountId, now));
+        new DepositStrategy(accountMap).execute(new DepositCommand(accountId, new BigDecimal("300.00"), now.plusSeconds(1)));
     }
 
     @Test
@@ -40,8 +39,7 @@ class WithdrawStrategyTest {
     @Test
     void shouldExecuteWithdrawAndDecreaseBalance() {
         List<Transaction> result = strategy.execute(
-                new WithdrawCommand(accountId, new BigDecimal("120.00"), now.plusSeconds(5)),
-                accountMap
+                new WithdrawCommand(accountId, new BigDecimal("120.00"), now.plusSeconds(5))
         );
 
         assertEquals(1, result.size());
@@ -52,12 +50,12 @@ class WithdrawStrategyTest {
     @Test
     void shouldRejectInvalidAccountAmountOrOverdraft() {
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new WithdrawCommand(UUID.randomUUID(), BigDecimal.TEN, now), accountMap));
+                () -> strategy.execute(new WithdrawCommand(UUID.randomUUID(), BigDecimal.TEN, now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new WithdrawCommand(accountId, BigDecimal.ZERO, now), accountMap));
+                () -> strategy.execute(new WithdrawCommand(accountId, BigDecimal.ZERO, now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new WithdrawCommand(accountId, new BigDecimal("-1.00"), now), accountMap));
+                () -> strategy.execute(new WithdrawCommand(accountId, new BigDecimal("-1.00"), now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new WithdrawCommand(accountId, new BigDecimal("300.01"), now), accountMap));
+                () -> strategy.execute(new WithdrawCommand(accountId, new BigDecimal("300.01"), now)));
     }
 }

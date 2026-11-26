@@ -22,10 +22,10 @@ class CreateAccountStrategyTest {
 
     @BeforeEach
     void setUp() {
-        strategy = new CreateAccountStrategy();
         accountMap = new HashMap<>();
         accountId = UUID.randomUUID();
         now = LocalDateTime.of(2026, 11, 25, 12, 0, 0);
+        strategy = new CreateAccountStrategy(accountMap);
     }
 
     @Test
@@ -35,7 +35,7 @@ class CreateAccountStrategyTest {
 
     @Test
     void shouldCreateAccountWithZeroBalance() {
-        List<Transaction> result = strategy.execute(new CreateAccountCommand(accountId, now), accountMap);
+        List<Transaction> result = strategy.execute(new CreateAccountCommand(accountId, now));
 
         assertEquals(1, result.size());
         Transaction tx = result.getFirst();
@@ -48,11 +48,12 @@ class CreateAccountStrategyTest {
 
     @Test
     void shouldRejectNullArgumentsOrDuplicateAccount() {
-        assertThrows(IllegalArgumentException.class, () -> strategy.execute(null, accountMap));
-        assertThrows(IllegalArgumentException.class, () -> strategy.execute(new CreateAccountCommand(null, now), accountMap));
-        assertThrows(IllegalArgumentException.class, () -> strategy.execute(new CreateAccountCommand(accountId, null), accountMap));
+        assertThrows(IllegalArgumentException.class, () -> strategy.execute(null));
+        assertThrows(IllegalArgumentException.class, () -> strategy.execute(new CreateAccountCommand(null, now)));
+        assertThrows(IllegalArgumentException.class, () -> strategy.execute(new CreateAccountCommand(accountId, null)));
 
-        strategy.execute(new CreateAccountCommand(accountId, now), accountMap);
-        assertThrows(IllegalArgumentException.class, () -> strategy.execute(new CreateAccountCommand(accountId, now.plusSeconds(1)), accountMap));
+        strategy.execute(new CreateAccountCommand(accountId, now));
+        assertThrows(IllegalArgumentException.class, () -> strategy.execute(new CreateAccountCommand(accountId,
+                now.plusSeconds(1))));
     }
 }

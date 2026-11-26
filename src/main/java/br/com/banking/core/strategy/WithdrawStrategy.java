@@ -12,13 +12,17 @@ import java.util.UUID;
 
 public class WithdrawStrategy extends AbstractTransactionStrategy<WithdrawCommand> {
 
+    public WithdrawStrategy(Map<UUID, Deque<Transaction>> accountMap) {
+        super(accountMap);
+    }
+
     @Override
     public TransactionType supportedTransaction() {
         return TransactionType.USER_WITHDRAW;
     }
 
     @Override
-    public void validateTransaction(WithdrawCommand command, Map<UUID, Deque<Transaction>> accountMap) {
+    public void validateTransaction(WithdrawCommand command) {
 
         if (command == null || command.accountId() == null || command.timestamp() == null) {
             throw new IllegalArgumentException("Command, accountId, and timestamp must not be null");
@@ -32,8 +36,8 @@ public class WithdrawStrategy extends AbstractTransactionStrategy<WithdrawComman
     }
 
     @Override
-    public List<Transaction> execute(WithdrawCommand command, Map<UUID, Deque<Transaction>> accountMap) {
-        validateTransaction(command, accountMap);
+    public List<Transaction> execute(WithdrawCommand command) {
+        validateTransaction(command);
 
         return List.of(decrementBalance(
                 UUID.randomUUID(),
@@ -41,7 +45,6 @@ public class WithdrawStrategy extends AbstractTransactionStrategy<WithdrawComman
                 command.amount(),
                 command.timestamp(),
                 null,
-                supportedTransaction(),
-                accountMap));
+                supportedTransaction()));
     }
 }

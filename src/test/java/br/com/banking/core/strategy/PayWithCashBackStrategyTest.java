@@ -20,19 +20,22 @@ class PayWithCashBackStrategyTest {
     private PayWithCashBackStrategy strategy;
     private Map<UUID, Deque<Transaction>> accountMap;
     private PriorityQueue<Transaction> cashbackHeap;
+    private Map<UUID, Transaction> cashbackIndex;
     private UUID accountId;
     private LocalDateTime now;
 
     @BeforeEach
     void setUp() {
-        strategy = new PayWithCashBackStrategy();
         accountMap = new HashMap<>();
         cashbackHeap = new PriorityQueue<>(Comparator.comparing(Transaction::scheduledDate));
+        cashbackIndex = new HashMap<>();
         accountId = UUID.randomUUID();
         now = LocalDateTime.of(2026, 11, 25, 12, 0, 0);
 
-        new CreateAccountStrategy().execute(new CreateAccountCommand(accountId, now), accountMap);
-        new DepositStrategy().execute(new DepositCommand(accountId, new BigDecimal("500.00"), now.plusSeconds(1)), accountMap);
+        new CreateAccountStrategy(accountMap).execute(new CreateAccountCommand(accountId, now));
+        new DepositStrategy(accountMap).execute(new DepositCommand(accountId, new BigDecimal("500.00"), now.plusSeconds(1)));
+
+        strategy = new PayWithCashBackStrategy(cashbackHeap, cashbackIndex, accountMap);
     }
 
     @Test
@@ -43,8 +46,7 @@ class PayWithCashBackStrategyTest {
     @Test
     void shouldDebitPaymentAndScheduleTwoPercentCashbackRoundingDown() {
         List<Transaction> result = strategy.execute(
-                new CashbackPaymentCommand(accountId, new BigDecimal("99.99"), now.plusSeconds(5), 20),
-                accountMap
+                new CashbackPaymentCommand(accountId, new BigDecimal("99.99"), now.plusSeconds(5), 20)
         );
 
         assertEquals(2, result.size());
@@ -61,35 +63,37 @@ class PayWithCashBackStrategyTest {
     }
 
     @Test
-    void shouldProcessDueCashbacksPreservingTransactionId() {
+    void shouldProcessDueCashbacksPreservingTransactionIdAndUpdatingIndex() {
         List<Transaction> result = strategy.execute(
-                new CashbackPaymentCommand(accountId, new BigDecimal("200.00"), now.plusSeconds(5), 15),
-                accountMap
+                new CashbackPaymentCommand(accountId, new BigDecimal("200.00"), now.plusSeconds(5), 15)
         );
-        Transaction pendingCashback = result.get(1);
-        cashbackHeap.offer(pendingCashback);
 
-        strategy.processCashback(now.plusSeconds(19), accountMap, cashbackHeap);
+        Transaction pendingCashback = result.get(1);
+        assertEquals(TransactionStatus.PENDING, cashbackIndex.get(pendingCashback.transactionId()).transactionStatus());
+
+        strategy.processCashback(now.plusSeconds(19));
         assertEquals(1, cashbackHeap.size());
         assertEquals(new BigDecimal("300.00"), accountMap.get(accountId).peek().balance());
+        assertEquals(TransactionStatus.PENDING, cashbackIndex.get(pendingCashback.transactionId()).transactionStatus());
 
-        strategy.processCashback(now.plusSeconds(20), accountMap, cashbackHeap);
+        strategy.processCashback(now.plusSeconds(20));
         assertTrue(cashbackHeap.isEmpty());
 
         Transaction settled = accountMap.get(accountId).peek();
         assertEquals(pendingCashback.transactionId(), settled.transactionId());
         assertEquals(TransactionStatus.CONCLUDED, settled.transactionStatus());
         assertEquals(new BigDecimal("304.00"), settled.balance());
+        assertEquals(TransactionStatus.CONCLUDED, cashbackIndex.get(pendingCashback.transactionId()).transactionStatus());
     }
 
     @Test
     void shouldRejectInvalidInputs() {
-        assertThrows(IllegalArgumentException.class, () -> strategy.execute(null, accountMap));
+        assertThrows(IllegalArgumentException.class, () -> strategy.execute(null));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new CashbackPaymentCommand(UUID.randomUUID(), BigDecimal.TEN, now, 10), accountMap));
+                () -> strategy.execute(new CashbackPaymentCommand(UUID.randomUUID(), BigDecimal.TEN, now, 10)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new CashbackPaymentCommand(accountId, BigDecimal.ZERO, now, 10), accountMap));
+                () -> strategy.execute(new CashbackPaymentCommand(accountId, BigDecimal.ZERO, now, 10)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new CashbackPaymentCommand(accountId, BigDecimal.TEN, now, -1), accountMap));
+                () -> strategy.execute(new CashbackPaymentCommand(accountId, BigDecimal.TEN, now, -1)));
     }
 }
