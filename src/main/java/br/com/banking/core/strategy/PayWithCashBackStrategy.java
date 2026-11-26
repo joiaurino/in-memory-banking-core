@@ -1,9 +1,9 @@
 package br.com.banking.core.strategy;
 
 import br.com.banking.core.domain.Transaction;
+import br.com.banking.core.domain.TransactionCommand.CashbackPaymentCommand;
 import br.com.banking.core.enums.TransactionStatus;
 import br.com.banking.core.enums.TransactionType;
-import br.com.banking.core.domain.TransactionCommand.CashbackPaymentCommand;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 public class PayWithCashBackStrategy extends AbstractTransactionStrategy<CashbackPaymentCommand> {
+
+    private static final BigDecimal CASHBACK_RATE = new BigDecimal("0.02");
 
     @Override
     public TransactionType supportedTransaction() {
@@ -39,9 +41,9 @@ public class PayWithCashBackStrategy extends AbstractTransactionStrategy<Cashbac
         Transaction paymentTransaction = decrementBalance(UUID.randomUUID(), command.accountId(), command.amount(),
                 command.timestamp(), null, TransactionType.PAYMENT_TRANSFER, accountMap);
 
-        BigDecimal cashbackAmount = command.amount().multiply(BigDecimal.valueOf(0.02)).setScale(2, RoundingMode.DOWN);
-        final LocalDateTime scheduledDate = command.timestamp().plusSeconds(command.secondsUntilCashback());
-        final Transaction pendingCashback = new Transaction(UUID.randomUUID(), command.accountId(), cashbackAmount, null,
+        BigDecimal cashbackAmount = command.amount().multiply(CASHBACK_RATE).setScale(2, RoundingMode.DOWN);
+        LocalDateTime scheduledDate = command.timestamp().plusSeconds(command.secondsUntilCashback());
+        Transaction pendingCashback = new Transaction(UUID.randomUUID(), command.accountId(), cashbackAmount, null,
                 command.timestamp(), scheduledDate, TransactionType.CASHBACK_DEPOSIT, TransactionStatus.PENDING);
 
         return List.of(paymentTransaction, pendingCashback);
@@ -50,7 +52,8 @@ public class PayWithCashBackStrategy extends AbstractTransactionStrategy<Cashbac
     public void processCashback(LocalDateTime currentTimestamp, Map<UUID, Deque<Transaction>> accountMap, PriorityQueue<Transaction> cashbackHeap) {
         while (!cashbackHeap.isEmpty() && !cashbackHeap.peek().scheduledDate().isAfter(currentTimestamp)) {
             Transaction cashbackTransaction = cashbackHeap.poll();
-            incrementBalance(cashbackTransaction.transactionId(), cashbackTransaction.accountId(), cashbackTransaction.amount(), cashbackTransaction.scheduledDate(), null, TransactionType.CASHBACK_DEPOSIT, accountMap);
+            incrementBalance(cashbackTransaction.transactionId(), cashbackTransaction.accountId(), cashbackTransaction.amount(),
+                    cashbackTransaction.scheduledDate(), null, TransactionType.CASHBACK_DEPOSIT, accountMap);
         }
     }
 }

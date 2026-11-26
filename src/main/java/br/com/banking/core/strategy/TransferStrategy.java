@@ -1,8 +1,8 @@
 package br.com.banking.core.strategy;
 
 import br.com.banking.core.domain.Transaction;
-import br.com.banking.core.enums.TransactionType;
 import br.com.banking.core.domain.TransactionCommand.TransferCommand;
+import br.com.banking.core.enums.TransactionType;
 
 import java.math.BigDecimal;
 import java.util.Deque;
@@ -18,30 +18,29 @@ public class TransferStrategy extends AbstractTransactionStrategy<TransferComman
     }
 
     @Override
-    public void validateTransaction(TransferCommand transaction, Map<UUID, Deque<Transaction>> accountMap) {
+    public void validateTransaction(TransferCommand command, Map<UUID, Deque<Transaction>> accountMap) {
 
-
-        if (transaction.sourceAccountId() == null || transaction.targetAccountId() == null ||
-                transaction.sourceAccountId().equals(transaction.targetAccountId())) {
+        if (command == null || command.timestamp() == null) {
+            throw new IllegalArgumentException("Command and timestamp must not be null");
+        }
+        if (command.sourceAccountId() == null || command.targetAccountId() == null ||
+                command.sourceAccountId().equals(command.targetAccountId())) {
             throw new IllegalArgumentException("Source and target accounts must be valid and distinct");
         }
-        if (!accountMap.containsKey(transaction.sourceAccountId()) || !accountMap.containsKey(transaction.targetAccountId())) {
+        if (!accountMap.containsKey(command.sourceAccountId()) || !accountMap.containsKey(command.targetAccountId())) {
             throw new IllegalArgumentException("Source or target account does not exist");
         }
-        if (transaction.amount() == null || transaction.amount().compareTo(BigDecimal.ZERO) <= 0) {
+        if (command.amount() == null || command.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
     }
 
     @Override
-    public List<Transaction> execute(TransferCommand transaction, Map<UUID, Deque<Transaction>> accountMap) {
+    public List<Transaction> execute(TransferCommand command, Map<UUID, Deque<Transaction>> accountMap) {
+        validateTransaction(command, accountMap);
 
-        validateTransaction(transaction, accountMap);
-
-        UUID debitTransactionId = UUID.randomUUID();
-        UUID creditTransactionId = UUID.randomUUID();
-        Transaction debitTx = decrementBalance(debitTransactionId, transaction.sourceAccountId(), transaction.amount(), transaction.timestamp(), null, TransactionType.TRANSFER, accountMap);
-        Transaction creditTx = incrementBalance(creditTransactionId, transaction.targetAccountId(), transaction.amount(), transaction.timestamp(), null, TransactionType.TRANSFER, accountMap);
+        Transaction debitTx = decrementBalance(UUID.randomUUID(), command.sourceAccountId(), command.amount(), command.timestamp(), null, supportedTransaction(), accountMap);
+        Transaction creditTx = incrementBalance(UUID.randomUUID(), command.targetAccountId(), command.amount(), command.timestamp(), null, supportedTransaction(), accountMap);
 
         return List.of(debitTx, creditTx);
     }

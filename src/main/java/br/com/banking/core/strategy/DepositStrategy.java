@@ -13,19 +13,21 @@ import java.util.UUID;
 public class DepositStrategy extends AbstractTransactionStrategy<DepositCommand>{
 
     @Override
-    public void validateTransaction(DepositCommand command, Map<UUID, Deque<Transaction>> accountMap) {
+    public TransactionType supportedTransaction() {
+        return TransactionType.USER_DEPOSIT;
+    }
 
+    @Override
+    public void validateTransaction(DepositCommand command, Map<UUID, Deque<Transaction>> accountMap) {
+        if (command == null || command.accountId() == null || command.timestamp() == null) {
+            throw new IllegalArgumentException("Command, accountId, and timestamp must not be null");
+        }
         if (!accountMap.containsKey(command.accountId())) {
             throw new IllegalArgumentException("Source account does not exist");
         }
         if (command.amount() == null || command.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Amount must be positive");
         }
-    }
-
-    @Override
-    public TransactionType supportedTransaction() {
-        return TransactionType.USER_DEPOSIT;
     }
 
     @Override

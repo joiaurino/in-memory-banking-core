@@ -34,7 +34,7 @@ class WithdrawStrategyTest {
 
     @Test
     void shouldSupportUserWithdrawalType() {
-        assertEquals(TransactionType.USER_WITHDRAWAL, strategy.supportedTransaction());
+        assertEquals(TransactionType.USER_WITHDRAW, strategy.supportedTransaction());
     }
 
     @Test

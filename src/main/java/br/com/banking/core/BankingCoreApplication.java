@@ -1,8 +1,8 @@
 package br.com.banking.core;
 
+import br.com.banking.core.cli.BankingCliRunner;
 import br.com.banking.core.cli.ConsoleIO;
 import br.com.banking.core.cli.MessageResolver;
-import br.com.banking.core.cli.BankingCliRunner;
 import br.com.banking.core.service.BankingCoreImpl;
 
 public class BankingCoreApplication {

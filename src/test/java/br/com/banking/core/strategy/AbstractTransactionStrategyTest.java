@@ -70,7 +70,7 @@ class AbstractTransactionStrategyTest {
         UUID txId = UUID.randomUUID();
         Transaction tx = strategy.decrementBalance(
                 txId, accountId, new BigDecimal("40.00"), now.plusSeconds(5),
-                null, TransactionType.USER_WITHDRAWAL, accountMap
+                null, TransactionType.USER_WITHDRAW, accountMap
         );
 
         assertEquals(txId, tx.transactionId());
@@ -84,7 +84,7 @@ class AbstractTransactionStrategyTest {
         assertThrows(IllegalArgumentException.class, () ->
                 strategy.decrementBalance(
                         UUID.randomUUID(), accountId, new BigDecimal("100.01"), now.plusSeconds(5),
-                        null, TransactionType.USER_WITHDRAWAL, accountMap
+                        null, TransactionType.USER_WITHDRAW, accountMap
                 )
         );
     }
@@ -98,7 +98,7 @@ class AbstractTransactionStrategyTest {
                 strategy.incrementBalance(UUID.randomUUID(), UUID.randomUUID(), BigDecimal.TEN, now, null, TransactionType.USER_DEPOSIT, accountMap)
         );
         assertThrows(IllegalArgumentException.class, () ->
-                strategy.decrementBalance(UUID.randomUUID(), unknown, BigDecimal.TEN, now, null, TransactionType.USER_WITHDRAWAL, accountMap)
+                strategy.decrementBalance(UUID.randomUUID(), unknown, BigDecimal.TEN, now, null, TransactionType.USER_WITHDRAW, accountMap)
         );
     }
 }

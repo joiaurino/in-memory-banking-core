@@ -72,7 +72,7 @@ public class BankingCliRunner {
 
     private void createAccount() {
         UUID accountId = UUID.randomUUID();
-        core.dispatch(new CreateAccountCommand(accountId, LocalDateTime.now())).getFirst();
+        core.dispatch(new CreateAccountCommand(accountId, LocalDateTime.now()));
         io.println("msg.account_created", accountId);
     }
 
@@ -95,7 +95,7 @@ public class BankingCliRunner {
         UUID targetId = io.readUuid("prompt.target_account");
         BigDecimal amount = io.readBigDecimal("prompt.amount");
         List<Transaction> txs = core.dispatch(new TransferCommand(sourceId, targetId, amount, LocalDateTime.now()));
-        io.println("msg.transfer_ok", txs.get(0).balance(), txs.get(1).balance());
+        io.println("msg.transfer_ok", txs.getFirst().balance(), txs.getLast().balance());
     }
 
     private void payWithCashback() {

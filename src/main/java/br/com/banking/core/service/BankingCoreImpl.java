@@ -9,9 +9,11 @@ import br.com.banking.core.strategy.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-
-public class BankingCoreImpl implements IBankingCore{
+public class BankingCoreImpl implements IBankingCore {
 
     private final Map<UUID, Deque<Transaction>> accountMap;
     private final PriorityQueue<Transaction> cashbackHeap;
@@ -22,21 +24,24 @@ public class BankingCoreImpl implements IBankingCore{
         this.accountMap = new HashMap<>();
         this.cashbackHeap = new PriorityQueue<>(Comparator.comparing(Transaction::scheduledDate));
         this.cashBackStrategy = new PayWithCashBackStrategy();
-        this.strategies = Map.of(
-                TransactionType.CREATE_ACCOUNT, new CreateAccountStrategy(),
-                TransactionType.USER_DEPOSIT, new DepositStrategy(),
-                TransactionType.USER_WITHDRAW, new WithdrawStrategy(),
-                TransactionType.TRANSFER, new TransferStrategy(),
-                TransactionType.CASHBACK_DEPOSIT, cashBackStrategy
-        );
+        this.strategies = Stream.of(
+                new CreateAccountStrategy(),
+                new DepositStrategy(),
+                new WithdrawStrategy(),
+                new TransferStrategy(),
+                cashBackStrategy
+        ).collect(Collectors.toUnmodifiableMap(
+                ITransactionStrategy::supportedTransaction,
+                Function.identity()
+        ));
     }
-
 
     @Override
     @SuppressWarnings("unchecked")
     public <T extends TransactionCommand> List<Transaction> dispatch(T command) {
-        if (command == null || command.timestamp() == null)
+        if (command == null || command.timestamp() == null) {
             throw new IllegalArgumentException("Command and timestamp must not be null");
+        }
 
         ITransactionStrategy<T> strategy = (ITransactionStrategy<T>) strategies.get(command.type());
         if (strategy == null) {
@@ -47,7 +52,7 @@ public class BankingCoreImpl implements IBankingCore{
 
         List<Transaction> transactions = strategy.execute(command, accountMap);
 
-        if(command.type() == TransactionType.CASHBACK_DEPOSIT) {
+        if (command.type() == TransactionType.CASHBACK_DEPOSIT) {
             cashbackHeap.offer(transactions.stream()
                     .filter(t -> t.transactionType() == TransactionType.CASHBACK_DEPOSIT
                             && t.transactionStatus() == TransactionStatus.PENDING)
@@ -83,11 +88,9 @@ public class BankingCoreImpl implements IBankingCore{
 
     @Override
     public BigDecimal getBalanceAt(UUID accountId, LocalDateTime pointInTime) {
-
         processCashback(pointInTime);
 
         final Deque<Transaction> transactions = accountMap.get(accountId);
-
         if (transactions == null || transactions.isEmpty()) {
             throw new IllegalArgumentException("Account does not exist or has no transactions");
         }
@@ -97,20 +100,20 @@ public class BankingCoreImpl implements IBankingCore{
                 .findFirst()
                 .map(Transaction::balance)
                 .orElseThrow(() -> new IllegalArgumentException("No transactions found before the specified point in time"));
-
     }
 
     @Override
     public List<Transaction> getStatement(UUID accountId) {
-        processCashback(LocalDateTime.now());
-        return Optional.ofNullable(accountMap.get(accountId)).orElse(new ArrayDeque<>()).stream().toList();
+        return Optional.ofNullable(accountMap.get(accountId))
+                .orElse(new ArrayDeque<>())
+                .stream()
+                .toList();
     }
 
     @Override
     public List<Transaction> findTransactions(UUID accountId, TransactionType type, LocalDateTime from, LocalDateTime to) {
         final Deque<Transaction> transactions = accountMap.get(accountId);
-
-        if(transactions == null || transactions.isEmpty()) {
+        if (transactions == null || transactions.isEmpty()) {
             throw new IllegalArgumentException("Account does not exist or has no transactions");
         }
 
@@ -121,4 +124,3 @@ public class BankingCoreImpl implements IBankingCore{
                 .toList();
     }
 }
-

@@ -114,7 +114,7 @@ class BankingCoreImplTest {
 
             assertEquals(new BigDecimal("124.50"), withdrawTx.balance());
             assertEquals(new BigDecimal("-75.50"), withdrawTx.amount());
-            assertEquals(TransactionType.USER_WITHDRAWAL, withdrawTx.transactionType());
+            assertEquals(TransactionType.USER_WITHDRAW, withdrawTx.transactionType());
 
             assertThrows(IllegalArgumentException.class,
                     () -> bankingCore.dispatch(new WithdrawCommand(accountA, new BigDecimal("125.00"), baseTime.plusSeconds(15))));
@@ -223,7 +223,7 @@ class BankingCoreImplTest {
                     accountA, null, baseTime.plusSeconds(15), baseTime.plusSeconds(25)
             );
             assertEquals(1, windowOnly.size());
-            assertEquals(TransactionType.USER_WITHDRAWAL, windowOnly.getFirst().transactionType());
+            assertEquals(TransactionType.USER_WITHDRAW, windowOnly.getFirst().transactionType());
         }
     }
 }
