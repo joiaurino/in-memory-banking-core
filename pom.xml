@@ -31,4 +31,26 @@
             </plugin>
         </plugins>
     </build>
+    
+    <licenses>
+        <license>
+            <name>All Rights Reserved</name>
+            <comments>Copyright (c) 2026 Joice Aurino Lima. All Rights Reserved.</comments>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>joiaurino</id>
+            <name>Joice Aurino Lima</name>
+            <email>joice.aurino@gmail.com</email>
+            <url>https://github.com/joiaurino</url>
+            <roles>
+                <role>Author</role>
+                <role>Software Engineer</role>
+            </roles>
+            <timezone>America/Sao_Paulo</timezone>
+        </developer>
+    </developers>
+
 </project>
