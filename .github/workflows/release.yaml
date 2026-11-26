@@ -27,7 +27,7 @@ jobs:
           cache: 'maven'
 
       - name: Run JUnit 5 Tests & Package JAR
-        run: mvn clean package
+        run: mvn package -B -Dmaven.wagon.http.retryHandler.count=3
 
       - name: Automatic Semantic Versioning & GitHub Release
         id: release
