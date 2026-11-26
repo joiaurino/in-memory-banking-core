@@ -14,13 +14,28 @@ public class PayWithCashBackStrategy extends AbstractTransactionStrategy<Cashbac
 
     private static final BigDecimal CASHBACK_RATE = new BigDecimal("0.02");
 
+    private final PriorityQueue<Transaction> cashbackHeap;
+    private final Map<UUID, Transaction> cashbackIndex;
+
+    public PayWithCashBackStrategy(PriorityQueue<Transaction> cashbackHeap,
+                                   Map<UUID, Transaction> cashbackIndex,
+                                   Map<UUID, Deque<Transaction>> accountMap) {
+
+        super(accountMap);
+        if (cashbackHeap == null || cashbackIndex == null) {
+            throw new IllegalArgumentException("Cashback structures and account map must not be null");
+        }
+        this.cashbackHeap = cashbackHeap;
+        this.cashbackIndex = cashbackIndex;
+    }
+
     @Override
     public TransactionType supportedTransaction() {
         return TransactionType.CASHBACK_DEPOSIT;
     }
 
     @Override
-    public void validateTransaction(CashbackPaymentCommand command, Map<UUID, Deque<Transaction>> accountMap) {
+    public void validateTransaction(CashbackPaymentCommand command) {
         if (command == null || command.accountId() == null || command.timestamp() == null) {
             throw new IllegalArgumentException("Command, accountId, and timestamp must not be null");
         }
@@ -36,24 +51,38 @@ public class PayWithCashBackStrategy extends AbstractTransactionStrategy<Cashbac
     }
 
     @Override
-    public List<Transaction> execute(CashbackPaymentCommand command, Map<UUID, Deque<Transaction>> accountMap) {
-        validateTransaction(command, accountMap);
+    public List<Transaction> execute(CashbackPaymentCommand command) {
+        validateTransaction(command);
         Transaction paymentTransaction = decrementBalance(UUID.randomUUID(), command.accountId(), command.amount(),
-                command.timestamp(), null, TransactionType.PAYMENT_TRANSFER, accountMap);
+                command.timestamp(), null, TransactionType.PAYMENT_TRANSFER);
 
         BigDecimal cashbackAmount = command.amount().multiply(CASHBACK_RATE).setScale(2, RoundingMode.DOWN);
         LocalDateTime scheduledDate = command.timestamp().plusSeconds(command.secondsUntilCashback());
         Transaction pendingCashback = new Transaction(UUID.randomUUID(), command.accountId(), cashbackAmount, null,
                 command.timestamp(), scheduledDate, TransactionType.CASHBACK_DEPOSIT, TransactionStatus.PENDING);
 
+        cashbackHeap.offer(pendingCashback);
+        cashbackIndex.put(pendingCashback.transactionId(), pendingCashback);
+
         return List.of(paymentTransaction, pendingCashback);
     }
 
-    public void processCashback(LocalDateTime currentTimestamp, Map<UUID, Deque<Transaction>> accountMap, PriorityQueue<Transaction> cashbackHeap) {
+    public void processCashback(LocalDateTime currentTimestamp) {
+        if (currentTimestamp == null) {
+            throw new IllegalArgumentException("Current timestamp must not be null");
+        }
+
         while (!cashbackHeap.isEmpty() && !cashbackHeap.peek().scheduledDate().isAfter(currentTimestamp)) {
-            Transaction cashbackTransaction = cashbackHeap.poll();
-            incrementBalance(cashbackTransaction.transactionId(), cashbackTransaction.accountId(), cashbackTransaction.amount(),
-                    cashbackTransaction.scheduledDate(), null, TransactionType.CASHBACK_DEPOSIT, accountMap);
+            Transaction pending = cashbackHeap.poll();
+            Transaction settled = incrementBalance(
+                    pending.transactionId(),
+                    pending.accountId(),
+                    pending.amount(),
+                    currentTimestamp,
+                    pending.scheduledDate(),
+                    TransactionType.CASHBACK_DEPOSIT
+            );
+            cashbackIndex.put(settled.transactionId(), settled);
         }
     }
 }

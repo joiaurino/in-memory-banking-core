@@ -22,22 +22,6 @@ class AbstractTransactionStrategyTest {
 
     @BeforeEach
     void setUp() {
-        strategy = new AbstractTransactionStrategy<>() {
-            @Override
-            public TransactionType supportedTransaction() {
-                return TransactionType.USER_DEPOSIT;
-            }
-
-            @Override
-            public void validateTransaction(DepositCommand command, Map<UUID, Deque<Transaction>> map) {
-            }
-
-            @Override
-            public List<Transaction> execute(DepositCommand command, Map<UUID, Deque<Transaction>> map) {
-                return List.of();
-            }
-        };
-
         accountMap = new HashMap<>();
         accountId = UUID.randomUUID();
         now = LocalDateTime.of(2026, 11, 25, 12, 0, 0);
@@ -47,6 +31,22 @@ class AbstractTransactionStrategyTest {
                 now, null, TransactionType.CREATE_ACCOUNT, TransactionStatus.CONCLUDED
         );
         accountMap.put(accountId, new ArrayDeque<>(List.of(initial)));
+
+        strategy = new AbstractTransactionStrategy<>(accountMap) {
+            @Override
+            public TransactionType supportedTransaction() {
+                return TransactionType.USER_DEPOSIT;
+            }
+
+            @Override
+            public void validateTransaction(DepositCommand command) {
+            }
+
+            @Override
+            public List<Transaction> execute(DepositCommand command) {
+                return List.of();
+            }
+        };
     }
 
     @Test
@@ -54,7 +54,7 @@ class AbstractTransactionStrategyTest {
         UUID txId = UUID.randomUUID();
         Transaction tx = strategy.incrementBalance(
                 txId, accountId, new BigDecimal("50.00"), now.plusSeconds(5),
-                null, TransactionType.USER_DEPOSIT, accountMap
+                null, TransactionType.USER_DEPOSIT
         );
 
         assertEquals(txId, tx.transactionId());
@@ -70,7 +70,7 @@ class AbstractTransactionStrategyTest {
         UUID txId = UUID.randomUUID();
         Transaction tx = strategy.decrementBalance(
                 txId, accountId, new BigDecimal("40.00"), now.plusSeconds(5),
-                null, TransactionType.USER_WITHDRAW, accountMap
+                null, TransactionType.USER_WITHDRAW
         );
 
         assertEquals(txId, tx.transactionId());
@@ -84,7 +84,7 @@ class AbstractTransactionStrategyTest {
         assertThrows(IllegalArgumentException.class, () ->
                 strategy.decrementBalance(
                         UUID.randomUUID(), accountId, new BigDecimal("100.01"), now.plusSeconds(5),
-                        null, TransactionType.USER_WITHDRAW, accountMap
+                        null, TransactionType.USER_WITHDRAW
                 )
         );
     }
@@ -95,10 +95,10 @@ class AbstractTransactionStrategyTest {
         accountMap.put(unknown, new ArrayDeque<>());
 
         assertThrows(IllegalArgumentException.class, () ->
-                strategy.incrementBalance(UUID.randomUUID(), UUID.randomUUID(), BigDecimal.TEN, now, null, TransactionType.USER_DEPOSIT, accountMap)
+                strategy.incrementBalance(UUID.randomUUID(), UUID.randomUUID(), BigDecimal.TEN, now, null, TransactionType.USER_DEPOSIT)
         );
         assertThrows(IllegalArgumentException.class, () ->
-                strategy.decrementBalance(UUID.randomUUID(), unknown, BigDecimal.TEN, now, null, TransactionType.USER_WITHDRAW, accountMap)
+                strategy.decrementBalance(UUID.randomUUID(), unknown, BigDecimal.TEN, now, null, TransactionType.USER_WITHDRAW)
         );
     }
 }

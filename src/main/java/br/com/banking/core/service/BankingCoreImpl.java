@@ -9,31 +9,27 @@ import br.com.banking.core.strategy.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class BankingCoreImpl implements IBankingCore {
 
     private final Map<UUID, Deque<Transaction>> accountMap;
     private final PriorityQueue<Transaction> cashbackHeap;
+    private final Map<UUID, Transaction> cashbackIndex;
     private final Map<TransactionType, ITransactionStrategy<?>> strategies;
     private final PayWithCashBackStrategy cashBackStrategy;
 
     public BankingCoreImpl() {
         this.accountMap = new HashMap<>();
         this.cashbackHeap = new PriorityQueue<>(Comparator.comparing(Transaction::scheduledDate));
-        this.cashBackStrategy = new PayWithCashBackStrategy();
-        this.strategies = Stream.of(
-                new CreateAccountStrategy(),
-                new DepositStrategy(),
-                new WithdrawStrategy(),
-                new TransferStrategy(),
-                cashBackStrategy
-        ).collect(Collectors.toUnmodifiableMap(
-                ITransactionStrategy::supportedTransaction,
-                Function.identity()
-        ));
+        this.cashbackIndex = new HashMap<>();
+        this.cashBackStrategy = new PayWithCashBackStrategy(cashbackHeap, cashbackIndex, accountMap);
+        this.strategies = Map.of(
+                TransactionType.CREATE_ACCOUNT, new CreateAccountStrategy(accountMap),
+                TransactionType.USER_DEPOSIT, new DepositStrategy(accountMap),
+                TransactionType.USER_WITHDRAW, new WithdrawStrategy(accountMap),
+                TransactionType.TRANSFER, new TransferStrategy(accountMap),
+                TransactionType.CASHBACK_DEPOSIT, cashBackStrategy
+        );
     }
 
     @Override
@@ -50,44 +46,41 @@ public class BankingCoreImpl implements IBankingCore {
 
         processCashback(command.timestamp());
 
-        List<Transaction> transactions = strategy.execute(command, accountMap);
-
-        if (command.type() == TransactionType.CASHBACK_DEPOSIT) {
-            cashbackHeap.offer(transactions.stream()
-                    .filter(t -> t.transactionType() == TransactionType.CASHBACK_DEPOSIT
-                            && t.transactionStatus() == TransactionStatus.PENDING)
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("No pending cashback transaction found")));
-        }
+        List<Transaction> transactions = strategy.execute(command);
 
         return transactions;
     }
 
     @Override
     public void processCashback(LocalDateTime currentTimestamp) {
-        cashBackStrategy.processCashback(currentTimestamp, accountMap, cashbackHeap);
+        cashBackStrategy.processCashback(currentTimestamp);
     }
 
     @Override
     public TransactionStatus getCashbackStatus(UUID accountId, UUID transactionId) {
+        if (accountId == null || transactionId == null) {
+            throw new IllegalArgumentException("AccountId and transactionId must not be null");
+        }
+
         if (!accountMap.containsKey(accountId)) {
             throw new IllegalArgumentException("Account does not exist");
         }
 
-        return cashbackHeap.stream()
-                .filter(t -> t.accountId().equals(accountId)
-                        && t.transactionId().equals(transactionId))
-                .findFirst()
-                .map(Transaction::transactionStatus)
-                .orElseGet(() -> accountMap.get(accountId).stream()
-                        .filter(t -> t.transactionId().equals(transactionId))
-                        .findFirst()
-                        .map(Transaction::transactionStatus)
-                        .orElseThrow(() -> new IllegalArgumentException("Cashback transaction not found")));
+        Transaction cashback = cashbackIndex.get(transactionId);
+        if (cashback == null || !cashback.accountId().equals(accountId)) {
+            throw new IllegalArgumentException("Cashback transaction not found");
+        }
+
+        return cashback.transactionStatus();
     }
 
     @Override
     public BigDecimal getBalanceAt(UUID accountId, LocalDateTime pointInTime) {
+
+        if(accountId == null || pointInTime == null) {
+            throw new IllegalArgumentException("AccountId and pointInTime must not be null");
+        }
+
         processCashback(pointInTime);
 
         final Deque<Transaction> transactions = accountMap.get(accountId);
@@ -104,22 +97,24 @@ public class BankingCoreImpl implements IBankingCore {
 
     @Override
     public List<Transaction> getStatement(UUID accountId) {
-        return Optional.ofNullable(accountMap.get(accountId))
-                .orElse(new ArrayDeque<>())
-                .stream()
-                .toList();
+        Deque<Transaction> transactions = accountMap.get(accountId);
+        if (transactions == null) {
+            return List.of();
+        }
+        return List.copyOf(transactions);
     }
 
     @Override
     public List<Transaction> findTransactions(UUID accountId, TransactionType type, LocalDateTime from, LocalDateTime to) {
         final Deque<Transaction> transactions = accountMap.get(accountId);
+
         if (transactions == null || transactions.isEmpty()) {
             throw new IllegalArgumentException("Account does not exist or has no transactions");
         }
 
         return transactions.stream()
+                .takeWhile(t -> from == null || !t.transactionDate().isBefore(from))
                 .filter(t -> type == null || t.transactionType() == type)
-                .filter(t -> from == null || !t.transactionDate().isBefore(from))
                 .filter(t -> to == null || !t.transactionDate().isAfter(to))
                 .toList();
     }

@@ -12,13 +12,17 @@ import java.util.UUID;
 
 public class DepositStrategy extends AbstractTransactionStrategy<DepositCommand>{
 
+    public DepositStrategy(Map<UUID, Deque<Transaction>> accountMap) {
+        super(accountMap);
+    }
+
     @Override
     public TransactionType supportedTransaction() {
         return TransactionType.USER_DEPOSIT;
     }
 
     @Override
-    public void validateTransaction(DepositCommand command, Map<UUID, Deque<Transaction>> accountMap) {
+    public void validateTransaction(DepositCommand command) {
         if (command == null || command.accountId() == null || command.timestamp() == null) {
             throw new IllegalArgumentException("Command, accountId, and timestamp must not be null");
         }
@@ -31,8 +35,8 @@ public class DepositStrategy extends AbstractTransactionStrategy<DepositCommand>
     }
 
     @Override
-    public List<Transaction> execute(DepositCommand command, Map<UUID, Deque<Transaction>> accountMap) {
-        validateTransaction(command, accountMap);
+    public List<Transaction> execute(DepositCommand command) {
+        validateTransaction(command);
 
         return List.of(incrementBalance(
                 UUID.randomUUID(),
@@ -40,8 +44,7 @@ public class DepositStrategy extends AbstractTransactionStrategy<DepositCommand>
                 command.amount(),
                 command.timestamp(),
                 null,
-                supportedTransaction(),
-                accountMap)
+                supportedTransaction())
         );
     }
 }

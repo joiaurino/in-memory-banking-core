@@ -13,16 +13,21 @@ import java.util.UUID;
 
 public abstract class AbstractTransactionStrategy<T extends TransactionCommand> implements ITransactionStrategy<T> {
 
+    protected final Map<UUID, Deque<Transaction>> accountMap;
+
+    protected AbstractTransactionStrategy(Map<UUID, Deque<Transaction>> accountMap) {
+        if (accountMap == null) {
+            throw new IllegalArgumentException("accountMap must not be null");
+        }
+        this.accountMap = accountMap;
+    }
+
     protected Transaction incrementBalance(UUID transactionId, UUID accountId,
                                            BigDecimal amount, LocalDateTime timestamp,
-                                           LocalDateTime scheduledDate, TransactionType type,
-                                           Map<UUID, Deque<Transaction>> accountMap) {
-
+                                           LocalDateTime scheduledDate, TransactionType type) {
         Deque<Transaction> transactions = accountMap.get(accountId);
         if (transactions == null || transactions.isEmpty()) {
-
             throw new IllegalArgumentException("Account does not exist or has no transactions");
-
         }
 
         BigDecimal currentBalance = transactions.peek().balance();
@@ -41,15 +46,11 @@ public abstract class AbstractTransactionStrategy<T extends TransactionCommand> 
 
         transactions.push(concludedTx);
         return concludedTx;
-
     }
 
-
-    protected Transaction decrementBalance(UUID transactionId, UUID accountId, BigDecimal amount, LocalDateTime timestamp,
-                                           LocalDateTime scheduledDate, TransactionType type,
-                                           Map<UUID, Deque<Transaction>> accountMap) {
-
-
+    protected Transaction decrementBalance(UUID transactionId, UUID accountId,
+                                           BigDecimal amount, LocalDateTime timestamp,
+                                           LocalDateTime scheduledDate, TransactionType type) {
         Deque<Transaction> transactions = accountMap.get(accountId);
         if (transactions == null || transactions.isEmpty()) {
             throw new IllegalArgumentException("Account does not exist or has no transactions");

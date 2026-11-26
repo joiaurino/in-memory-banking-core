@@ -6,6 +6,5 @@ public enum TransactionType {
     USER_WITHDRAW,
     TRANSFER,
     PAYMENT_TRANSFER,
-    CASHBACK_DEPOSIT,
-    MERGE_ACCOUNT
+    CASHBACK_DEPOSIT
 }

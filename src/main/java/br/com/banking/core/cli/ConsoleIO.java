@@ -25,6 +25,11 @@ public class ConsoleIO implements AutoCloseable {
         return scanner.nextLine().trim();
     }
 
+    public String readString(String promptKey) {
+        System.out.print(messages.get(promptKey));
+        return readLine();
+    }
+
     public UUID readUuid(String promptKey) {
         System.out.print(messages.get(promptKey));
         return UUID.fromString(readLine());

@@ -9,13 +9,18 @@ import java.math.BigDecimal;
 import java.util.*;
 
 public class CreateAccountStrategy  extends AbstractTransactionStrategy<CreateAccountCommand>{
+
+    public CreateAccountStrategy(Map<UUID, Deque<Transaction>> accountMap) {
+        super(accountMap);
+    }
+
     @Override
     public TransactionType supportedTransaction() {
         return TransactionType.CREATE_ACCOUNT;
     }
 
     @Override
-    public void validateTransaction(CreateAccountCommand command, Map<UUID, Deque<Transaction>> accountMap) {
+    public void validateTransaction(CreateAccountCommand command) {
         if (command == null || command.accountId() == null || command.timestamp() == null) {
             throw new IllegalArgumentException("Command, accountId, and timestamp must not be null");
         }
@@ -25,8 +30,8 @@ public class CreateAccountStrategy  extends AbstractTransactionStrategy<CreateAc
     }
 
     @Override
-    public List<Transaction> execute(CreateAccountCommand command, Map<UUID, Deque<Transaction>> accountMap) {
-        validateTransaction(command, accountMap);
+    public List<Transaction> execute(CreateAccountCommand command) {
+        validateTransaction(command);
 
         Transaction initialTx = new Transaction(
                 UUID.randomUUID(),

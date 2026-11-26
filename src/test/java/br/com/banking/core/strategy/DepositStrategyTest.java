@@ -16,17 +16,17 @@ import static org.junit.jupiter.api.Assertions.*;
 class DepositStrategyTest {
 
     private DepositStrategy strategy;
-    private Map<UUID, Deque<Transaction>> accountMap;
     private UUID accountId;
     private LocalDateTime now;
 
     @BeforeEach
     void setUp() {
-        strategy = new DepositStrategy();
-        accountMap = new HashMap<>();
+        Map<UUID, Deque<Transaction>> accountMap = new HashMap<>();
         accountId = UUID.randomUUID();
         now = LocalDateTime.of(2026, 11, 25, 12, 0, 0);
-        new CreateAccountStrategy().execute(new CreateAccountCommand(accountId, now), accountMap);
+        new CreateAccountStrategy(accountMap).execute(new CreateAccountCommand(accountId, now));
+        strategy = new DepositStrategy(accountMap);
+
     }
 
     @Test
@@ -37,8 +37,7 @@ class DepositStrategyTest {
     @Test
     void shouldExecuteDepositAndIncreaseBalance() {
         List<Transaction> result = strategy.execute(
-                new DepositCommand(accountId, new BigDecimal("250.75"), now.plusSeconds(10)),
-                accountMap
+                new DepositCommand(accountId, new BigDecimal("250.75"), now.plusSeconds(10))
         );
 
         assertEquals(1, result.size());
@@ -49,12 +48,12 @@ class DepositStrategyTest {
     @Test
     void shouldRejectNonExistentAccountOrNonPositiveAmount() {
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new DepositCommand(UUID.randomUUID(), BigDecimal.TEN, now), accountMap));
+                () -> strategy.execute(new DepositCommand(UUID.randomUUID(), BigDecimal.TEN, now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new DepositCommand(accountId, BigDecimal.ZERO, now), accountMap));
+                () -> strategy.execute(new DepositCommand(accountId, BigDecimal.ZERO, now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new DepositCommand(accountId, new BigDecimal("-5.00"), now), accountMap));
+                () -> strategy.execute(new DepositCommand(accountId, new BigDecimal("-5.00"), now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new DepositCommand(accountId, null, now), accountMap));
+                () -> strategy.execute(new DepositCommand(accountId, null, now)));
     }
 }

@@ -24,16 +24,17 @@ class TransferStrategyTest {
 
     @BeforeEach
     void setUp() {
-        strategy = new TransferStrategy();
         accountMap = new HashMap<>();
         sourceId = UUID.randomUUID();
         targetId = UUID.randomUUID();
         now = LocalDateTime.of(2026, 11, 25, 12, 0, 0);
 
-        CreateAccountStrategy createStrategy = new CreateAccountStrategy();
-        createStrategy.execute(new CreateAccountCommand(sourceId, now), accountMap);
-        createStrategy.execute(new CreateAccountCommand(targetId, now), accountMap);
-        new DepositStrategy().execute(new DepositCommand(sourceId, new BigDecimal("500.00"), now.plusSeconds(1)), accountMap);
+        CreateAccountStrategy createStrategy = new CreateAccountStrategy(accountMap);
+        createStrategy.execute(new CreateAccountCommand(sourceId, now));
+        createStrategy.execute(new CreateAccountCommand(targetId, now));
+        new DepositStrategy(accountMap).execute(new DepositCommand(sourceId, new BigDecimal("500.00"), now.plusSeconds(1)));
+        strategy = new TransferStrategy(accountMap);
+
     }
 
     @Test
@@ -44,8 +45,7 @@ class TransferStrategyTest {
     @Test
     void shouldTransferFundsBetweenSourceAndTarget() {
         List<Transaction> result = strategy.execute(
-                new TransferCommand(sourceId, targetId, new BigDecimal("200.00"), now.plusSeconds(5)),
-                accountMap
+                new TransferCommand(sourceId, targetId, new BigDecimal("200.00"), now.plusSeconds(5))
         );
 
         assertEquals(2, result.size());
@@ -64,14 +64,26 @@ class TransferStrategyTest {
     @Test
     void shouldRejectSameAccountMissingAccountsOrInvalidAmount() {
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new TransferCommand(sourceId, sourceId, BigDecimal.TEN, now), accountMap));
+                () -> strategy.execute(new TransferCommand(sourceId, sourceId, BigDecimal.TEN, now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new TransferCommand(null, targetId, BigDecimal.TEN, now), accountMap));
+                () -> strategy.execute(new TransferCommand(null, targetId, BigDecimal.TEN, now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new TransferCommand(sourceId, UUID.randomUUID(), BigDecimal.TEN, now), accountMap));
+                () -> strategy.execute(new TransferCommand(sourceId, UUID.randomUUID(), BigDecimal.TEN, now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new TransferCommand(sourceId, targetId, BigDecimal.ZERO, now), accountMap));
+                () -> strategy.execute(new TransferCommand(sourceId, targetId, BigDecimal.ZERO, now)));
         assertThrows(IllegalArgumentException.class,
-                () -> strategy.execute(new TransferCommand(sourceId, targetId, new BigDecimal("600.00"), now), accountMap));
+                () -> strategy.execute(new TransferCommand(sourceId, targetId, new BigDecimal("600.00"), now)));
+    }
+
+    @Test
+    void shouldRollbackSourceDebitAtomicallyIfTargetCreditFails() {
+        accountMap.put(targetId, new ArrayDeque<>());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                strategy.execute(new TransferCommand(sourceId, targetId, new BigDecimal("200.00"), now.plusSeconds(5)))
+        );
+
+        assertEquals(2, accountMap.get(sourceId).size());
+        assertEquals(new BigDecimal("500.00"), accountMap.get(sourceId).peek().balance());
     }
 }
