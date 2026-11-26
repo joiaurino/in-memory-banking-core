@@ -61,7 +61,6 @@ class BankingCliRunnerTest {
         assertTrue(uuidMatcher.find(), "Should print generated account UUID");
         String accountId = uuidMatcher.group();
 
-        // 2º: Usa a mesma instância do core para depositar, consultar saldo, testar opção inválida e sair
         outputCapture.reset();
         String secondSessionInput = String.join("\n",
                 "2", accountId, "300.00",

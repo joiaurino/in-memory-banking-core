@@ -69,7 +69,6 @@ class PayWithCashBackStrategyTest {
         Transaction pendingCashback = result.get(1);
         cashbackHeap.offer(pendingCashback);
 
-        // Antes do horário agendado (t + 19s): nada é liquidado
         strategy.processCashback(now.plusSeconds(19), accountMap, cashbackHeap);
         assertEquals(1, cashbackHeap.size());
         assertEquals(new BigDecimal("300.00"), accountMap.get(accountId).peek().balance());
