@@ -36,7 +36,7 @@ public class PayWithCashBackStrategy extends AbstractTransactionStrategy<Cashbac
     @Override
     public List<Transaction> execute(CashbackPaymentCommand command, Map<UUID, Deque<Transaction>> accountMap) {
         validateTransaction(command, accountMap);
-        Transaction paymentTransaction = decrementBalance(command.accountId(), command.amount(),
+        Transaction paymentTransaction = decrementBalance(UUID.randomUUID(), command.accountId(), command.amount(),
                 command.timestamp(), null, TransactionType.PAYMENT_TRANSFER, accountMap);
 
         BigDecimal cashbackAmount = command.amount().multiply(BigDecimal.valueOf(0.02)).setScale(2, RoundingMode.DOWN);
@@ -50,7 +50,7 @@ public class PayWithCashBackStrategy extends AbstractTransactionStrategy<Cashbac
     public void processCashback(LocalDateTime currentTimestamp, Map<UUID, Deque<Transaction>> accountMap, PriorityQueue<Transaction> cashbackHeap) {
         while (!cashbackHeap.isEmpty() && !cashbackHeap.peek().scheduledDate().isAfter(currentTimestamp)) {
             Transaction cashbackTransaction = cashbackHeap.poll();
-            incrementBalance(cashbackTransaction.accountId(), cashbackTransaction.amount(), cashbackTransaction.scheduledDate(), null, TransactionType.CASHBACK_DEPOSIT, accountMap);
+            incrementBalance(cashbackTransaction.transactionId(), cashbackTransaction.accountId(), cashbackTransaction.amount(), cashbackTransaction.scheduledDate(), null, TransactionType.CASHBACK_DEPOSIT, accountMap);
         }
     }
 }

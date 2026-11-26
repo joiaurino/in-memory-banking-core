@@ -33,6 +33,7 @@ public class DepositStrategy extends AbstractTransactionStrategy<DepositCommand>
         validateTransaction(command, accountMap);
 
         return List.of(incrementBalance(
+                UUID.randomUUID(),
                 command.accountId(),
                 command.amount(),
                 command.timestamp(),

@@ -33,6 +33,7 @@ public class WithdrawStrategy extends AbstractTransactionStrategy<WithdrawComman
         validateTransaction(command, accountMap);
 
         return List.of(decrementBalance(
+                UUID.randomUUID(),
                 command.accountId(),
                 command.amount(),
                 command.timestamp(),

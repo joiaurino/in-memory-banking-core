@@ -7,24 +7,29 @@ import br.com.banking.core.enums.TransactionType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Deque;
+import java.util.Map;
+import java.util.UUID;
 
 public abstract class AbstractTransactionStrategy<T extends TransactionCommand> implements ITransactionStrategy<T> {
 
-    protected Transaction incrementBalance(UUID accountId, BigDecimal amount, LocalDateTime timestamp,
+    protected Transaction incrementBalance(UUID transactionId, UUID accountId,
+                                           BigDecimal amount, LocalDateTime timestamp,
                                            LocalDateTime scheduledDate, TransactionType type,
                                            Map<UUID, Deque<Transaction>> accountMap) {
 
         Deque<Transaction> transactions = accountMap.get(accountId);
         if (transactions == null || transactions.isEmpty()) {
+
             throw new IllegalArgumentException("Account does not exist or has no transactions");
+
         }
 
         BigDecimal currentBalance = transactions.peek().balance();
         BigDecimal newBalance = currentBalance.add(amount);
 
         Transaction concludedTx = new Transaction(
-                UUID.randomUUID(),
+                transactionId,
                 accountId,
                 amount,
                 newBalance,
@@ -36,11 +41,14 @@ public abstract class AbstractTransactionStrategy<T extends TransactionCommand> 
 
         transactions.push(concludedTx);
         return concludedTx;
+
     }
 
-    protected Transaction decrementBalance(UUID accountId, BigDecimal amount, LocalDateTime timestamp,
+
+    protected Transaction decrementBalance(UUID transactionId, UUID accountId, BigDecimal amount, LocalDateTime timestamp,
                                            LocalDateTime scheduledDate, TransactionType type,
                                            Map<UUID, Deque<Transaction>> accountMap) {
+
 
         Deque<Transaction> transactions = accountMap.get(accountId);
         if (transactions == null || transactions.isEmpty()) {
@@ -55,7 +63,7 @@ public abstract class AbstractTransactionStrategy<T extends TransactionCommand> 
         }
 
         Transaction concludedTx = new Transaction(
-                UUID.randomUUID(),
+                transactionId,
                 accountId,
                 amount.negate(),
                 newBalance,

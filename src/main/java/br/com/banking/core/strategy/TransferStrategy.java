@@ -38,8 +38,10 @@ public class TransferStrategy extends AbstractTransactionStrategy<TransferComman
 
         validateTransaction(transaction, accountMap);
 
-        Transaction debitTx = decrementBalance(transaction.sourceAccountId(), transaction.amount(), transaction.timestamp(), null, TransactionType.TRANSFER, accountMap);
-        Transaction creditTx = incrementBalance(transaction.targetAccountId(), transaction.amount(), transaction.timestamp(), null, TransactionType.TRANSFER, accountMap);
+        UUID debitTransactionId = UUID.randomUUID();
+        UUID creditTransactionId = UUID.randomUUID();
+        Transaction debitTx = decrementBalance(debitTransactionId, transaction.sourceAccountId(), transaction.amount(), transaction.timestamp(), null, TransactionType.TRANSFER, accountMap);
+        Transaction creditTx = incrementBalance(creditTransactionId, transaction.targetAccountId(), transaction.amount(), transaction.timestamp(), null, TransactionType.TRANSFER, accountMap);
 
         return List.of(debitTx, creditTx);
     }
