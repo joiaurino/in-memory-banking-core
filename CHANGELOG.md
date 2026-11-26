@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [4.0.0](https://github.com/joiaurino/in-memory-banking-core/compare/v3.0.1...v4.0.0) (2026-11-26)
+## [3.0.0](https://github.com/joiaurino/in-memory-banking-core/compare/v3.0.1...v3.0.0) (2026-11-26)
 
 
 ### ⚠ BREAKING CHANGES
